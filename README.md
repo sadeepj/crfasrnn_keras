@@ -1,4 +1,5 @@
-# CRF-RNN for Semantic Image Segmentation - Keras/Tensorflow version
+# CRF-RNN for Semantic Image Segmentation
+## Keras/Tensorflow version
 ![sample](sample.png)
 
 <b>Live demo:</b> [http://crfasrnn.torr.vision](http://crfasrnn.torr.vision) <br/>
