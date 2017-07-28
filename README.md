@@ -20,7 +20,7 @@ If you use this code/model for your research, please cite the following paper:
 
 ### 1.1 Install dependencies
 
-Install [Tensorflow](https://www.tensorflow.org/install/) and [Keras](https://keras.io/#installation), following the respective installation guides. You would need to install Keras with HDF5/h5py if you plan to use the provided trained model. After installing these two packages, run the following commands to make sure they are properly installed:
+Install [Tensorflow](https://www.tensorflow.org/install/) and [Keras](https://keras.io/#installation), following the respective installation guides. You will need to install Keras with HDF5/h5py if you plan to use the provided trained model. After installing these two packages, run the following commands to make sure they are properly installed:
 ```
 # First, activate the correct Python virtualenv if you used one during Tensorflow/Keras installation
 $ source /home/user/tensorflow_virtualenv/bin/activate  
@@ -39,7 +39,7 @@ $ cd crfasrnn_keras/cpp
 $ source /home/user/tensorflow_virtualenv/bin/activate
 $ ./compile.sh
 ``` 
-If the build succeeds, you will see a new file named `high_dim_filter.so` (extension can differ depending on your OS). If it fails, please see the comments inside `compile.sh` file for help. You could also refer to the official Tensorflow guide for [building a custom op](ttps://www.tensorflow.org/extend/adding_an_op#build_the_op_library).
+If the build succeeds, you will see a new file named `high_dim_filter.so` (extension can differ depending on your OS). If it fails, please see the comments inside the `compile.sh` file for help. You could also refer to the official Tensorflow guide for [building a custom op](https://www.tensorflow.org/extend/adding_an_op#build_the_op_library).
 
 ### 1.3 Download the pre-trained model weights
 
@@ -50,4 +50,8 @@ Download the model weights from [here](https://goo.gl/ciEYZi) and place it in th
 $ cd crfasrnn_keras
 $ python run_demo.py  # Make sure that the correct virtualenv is already activated
 ```
-If everything goes well, you should see the segmentation results in a file named "labels.png"
+If everything goes well, you will see the segmentation results in a file named "labels.png"
+
+## Limitations in the Current Version
+1. Backpropagation of the CRF-RNN layer is not implemented yet. Therefore, currently this code cannot be used for training new models. This will be fixed shortly.
+2. Currently, some operations in the CRF-RNN layer can only run on the CPU. An all-GPU version will be released soon.
