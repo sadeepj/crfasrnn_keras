@@ -43,7 +43,7 @@ If the build succeeds, you will see a new file named `high_dim_filter.so` (exten
 
 ### 1.3 Download the pre-trained model weights
 
-Download the model weights from [here](https://goo.gl/yBk1hT) and place it in the `crfasrnn_keras` directory with the file name `crfrnn_keras_model.h5`.
+Download the model weights from [here](https://goo.gl/ciEYZi) and place it in the `crfasrnn_keras` directory with the file name `crfrnn_keras_model.h5`.
 
 ### 1.4 Run the demo
 ```
