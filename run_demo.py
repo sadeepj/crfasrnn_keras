@@ -6,8 +6,8 @@ def main():
     input_file = "image.jpg"
     output_file = "labels.png"
 
-    # Download the model from https://goo.gl/rPdH6L
-    saved_model_path = "keras_crfrnn_model.h5"
+    # Download the model from https://goo.gl/ciEYZi
+    saved_model_path = "crfrnn_keras_model.h5"
 
     model = get_crfrnn_model_def()
     model.load_weights(saved_model_path)
