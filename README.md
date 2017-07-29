@@ -54,5 +54,5 @@ If everything goes well, you will see the segmentation results in a file named "
 
 
 ## Limitations of the Current Version
-1. Backpropagation of the CRF-RNN layer is not implemented yet. Therefore, currently this code cannot be used for training new models. This will be fixed shortly.
-2. Currently, some operations in the CRF-RNN layer can only run on the CPU. An all-GPU version will be released soon.
+1. Currently, some operations in the CRF-RNN layer can only run on the CPU. An all-GPU version will be released soon.
+2. The `crfrnn_keras_model.h5` model was directly converted from the [Caffe model](https://github.com/torrvision/crfasrnn). However, training new models entirely from Keras is possible too.
