@@ -41,6 +41,7 @@ REGISTER_OP("HighDimFilter")
     .Attr("theta_alpha: float = 1.0")
     .Attr("theta_beta: float = 1.0")
     .Attr("theta_gamma: float = 1.0")
+    .Attr("backwards: bool = false")
     .Input("raw: float32")
     .Input("rgb: float32")
     .Output("filtered: float32")
@@ -61,6 +62,8 @@ class HighDimFilterOp : public OpKernel {
                    context->GetAttr("theta_beta", &theta_beta_));
     OP_REQUIRES_OK(context,
                    context->GetAttr("theta_gamma", &theta_gamma_));
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("backwards", &backwards_));
   }
 
   void Compute(OpKernelContext* context) override {
@@ -86,14 +89,14 @@ class HighDimFilterOp : public OpKernel {
       compute_bilateral_kernel(kernel_vals, image_tensor,
                                theta_alpha_, theta_beta_);
       mp.init(kernel_vals, 5, num_pixels);
-      mp.compute(*output_tensor, input_tensor, channels);
+      mp.compute(*output_tensor, input_tensor, channels, backwards_);
 
       delete[] kernel_vals;
     } else {
       float * const kernel_vals = new float[2 * num_pixels];
       compute_spatial_kernel(kernel_vals, width, height, theta_gamma_);
       mp.init(kernel_vals, 2, num_pixels);
-      mp.compute(*output_tensor, input_tensor, channels);
+      mp.compute(*output_tensor, input_tensor, channels, backwards_);
 
       delete[] kernel_vals;
     }
@@ -105,6 +108,7 @@ class HighDimFilterOp : public OpKernel {
   float theta_alpha_;
   float theta_beta_;
   float theta_gamma_;
+  bool backwards_;
 };
 
 REGISTER_KERNEL_BUILDER(Name("HighDimFilter").Device(DEVICE_CPU), HighDimFilterOp);
