@@ -3,7 +3,7 @@
 
 <b>Live demo:</b> [http://crfasrnn.torr.vision](http://crfasrnn.torr.vision) <br/>
 
-This repository contains Keras/Tensorflow code for the "CRF-RNN" semantic image segmentation method, published in the ICCV 2015 paper [Conditional Random Fields as Recurrent Neural Networks](http://www.robots.ox.ac.uk/~szheng/papers/CRFasRNN.pdf). This paper was initially described in an [arXiv tech report](http://arxiv.org/abs/1502.03240). The [online demo](http://crfasrnn.torr.vision) of this project won the Best Demo Prize at ICCV 2015. Original Caffe based code of this project can be found [here](https://github.com/torrvision/crfasrnn).
+This repository contains Keras/Tensorflow code for the "CRF-RNN" semantic image segmentation method, published in the ICCV 2015 paper [Conditional Random Fields as Recurrent Neural Networks](http://www.robots.ox.ac.uk/~szheng/papers/CRFasRNN.pdf). This paper was initially described in an [arXiv tech report](http://arxiv.org/abs/1502.03240). The [online demo](http://crfasrnn.torr.vision) of this project won the Best Demo Prize at ICCV 2015. Original Caffe-based code of this project can be found [here](https://github.com/torrvision/crfasrnn). Results you get with this Keras/Tensorflow code should be almost identical to that with the Caffe-based version.
 
 If you use this code/model for your research, please cite the following paper:
 ```
@@ -18,7 +18,7 @@ If you use this code/model for your research, please cite the following paper:
 
 ## Installation Guide
 
-### 1.1 Install dependencies
+### 1.1  Install dependencies
 
 Install [Tensorflow](https://www.tensorflow.org/install/) and [Keras](https://keras.io/#installation), following the respective installation guides. You will need to install Keras with HDF5/h5py if you plan to use the provided trained model. After installing these two packages, run the following commands to make sure they are properly installed:
 ```
@@ -30,7 +30,7 @@ $ python
 ```
 You should not see any errors while importing `tensorflow` and `keras` above.
 
-### 1.2 Build CRF-RNN custom C++ code
+### 1.2  Build CRF-RNN custom C++ code
 
 Checkout the code in this repository, activate the Tensorflow/Keras virtualenv (if you used one), and run the `compile.sh` script in the `cpp` directory. That is, run the following commands:
 ```
@@ -41,17 +41,18 @@ $ ./compile.sh
 ``` 
 If the build succeeds, you will see a new file named `high_dim_filter.so` (extension can differ depending on your OS). If it fails, please see the comments inside the `compile.sh` file for help. You could also refer to the official Tensorflow guide for [building a custom op](https://www.tensorflow.org/extend/adding_an_op#build_the_op_library).
 
-### 1.3 Download the pre-trained model weights
+### 1.3  Download the pre-trained model weights
 
 Download the model weights from [here](https://goo.gl/ciEYZi) and place it in the `crfasrnn_keras` directory with the file name `crfrnn_keras_model.h5`.
 
-### 1.4 Run the demo
+### 1.4  Run the demo
 ```
 $ cd crfasrnn_keras
 $ python run_demo.py  # Make sure that the correct virtualenv is already activated
 ```
 If everything goes well, you will see the segmentation results in a file named "labels.png"
 
-## Limitations in the Current Version
+
+## Limitations of the Current Version
 1. Backpropagation of the CRF-RNN layer is not implemented yet. Therefore, currently this code cannot be used for training new models. This will be fixed shortly.
 2. Currently, some operations in the CRF-RNN layer can only run on the CPU. An all-GPU version will be released soon.
