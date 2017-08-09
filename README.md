@@ -39,7 +39,7 @@ $ cd crfasrnn_keras/cpp
 $ source /home/user/tensorflow_virtualenv/bin/activate
 $ ./compile.sh
 ``` 
-If the build succeeds, you will see a new file named `high_dim_filter.so` (extension can differ depending on your OS). If it fails, please see the comments inside the `compile.sh` file for help. You could also refer to the official Tensorflow guide for [building a custom op](https://www.tensorflow.org/extend/adding_an_op#build_the_op_library).
+If the build succeeds, you will see a new file named `high_dim_filter.so`. If it fails, please see the comments inside the `compile.sh` file for help. You could also refer to the official Tensorflow guide for [building a custom op](https://www.tensorflow.org/extend/adding_an_op#build_the_op_library).
 
 ### 1.3  Download the pre-trained model weights
 
