@@ -42,6 +42,8 @@ $ ./compile.sh
 ``` 
 If the build succeeds, you will see a new file named `high_dim_filter.so`. If it fails, please see the comments inside the `compile.sh` file for help. You could also refer to the official Tensorflow guide for [building a custom op](https://www.tensorflow.org/extend/adding_an_op#build_the_op_library).
 
+*Note*: This script will not work on Windows OS. If you are on Windows, please check [this issue](https://github.com/tensorflow/models/issues/1103) and the comments therein. The official Tensorflow guide for building a custom op does not yet include build instructions for Windows.
+
 ### 1.3  Download the pre-trained model weights
 
 Download the model weights from [here](https://goo.gl/ciEYZi) and place it in the `crfasrnn_keras` directory with the file name `crfrnn_keras_model.h5`.
