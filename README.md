@@ -59,4 +59,4 @@ If everything goes well, you will see the segmentation results in a file named "
 ## Limitations of the Current Version
 1. Currently, some operations in the CRF-RNN layer can only run on the CPU. An all-GPU version will be released soon.
 2. The `crfrnn_keras_model.h5` model was directly converted from the [Caffe model](https://github.com/torrvision/crfasrnn). However, training new models entirely from Keras is possible too.
-3. Current implementation of CrfRnnLayer only supports batch size == 1
+3. Current implementation of CrfRnnLayer only supports batch_size == 1
