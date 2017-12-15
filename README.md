@@ -33,7 +33,7 @@ You should not see any errors while importing `tensorflow` and `keras` above.
 
 ### 1.2  Build CRF-RNN custom C++ code
 
-Checkout the code in this repository, activate the Tensorflow/Keras virtualenv (if you used one), and run the `compile.sh` script in the `cpp` directory. That is, run the following commands:
+Clone the code in this repository, activate the Tensorflow/Keras virtualenv (if you used one), and run the `compile.sh` script in the `cpp` directory. That is, run the following commands:
 ```
 $ git clone https://github.com/sadeepj/crfasrnn_keras.git
 $ cd crfasrnn_keras/cpp
