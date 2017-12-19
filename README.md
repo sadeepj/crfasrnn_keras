@@ -45,7 +45,7 @@ You should not see any errors while importing `tensorflow` and `keras` above.
 
 ### Step 3: Build CRF-RNN custom op C++ code
 
-Run `make` inside the `cpp` directory:
+Run `make` inside the `crfasrnn_keras/cpp` directory:
 ```
 $ cd crfasrnn_keras/cpp
 $ make
@@ -54,7 +54,7 @@ Note that `python` command in the console should refer to the Python interpreter
 
 You will get a new file named `high_dim_filter.so` from this build. If it fails, refer to the official Tensorflow guide for [building a custom op](https://www.tensorflow.org/extend/adding_an_op#build_the_op_library) for help.
 
-*Note*: This make script works on Linux and macOS, but not on Windows OS. If you are on Windows, please check [this issue](https://github.com/tensorflow/models/issues/1103) and the comments therein for build instructions. The official Tensorflow guide for building a custom op does not yet include build instructions for Windows.
+**Note**: This make script works on Linux and macOS, but not on Windows OS. If you are on Windows, please check [this issue](https://github.com/tensorflow/models/issues/1103) and the comments therein for build instructions. The official Tensorflow guide for building a custom op does not yet include build instructions for Windows.
 
 ### Step 4: Download the pre-trained model weights
 
@@ -63,7 +63,7 @@ Download the model weights from [here](https://goo.gl/ciEYZi) and place it in th
 ### Step 5: Run the demo
 ```
 $ cd crfasrnn_keras
-$ python run_demo.py  # Make sure that the correct virtualenv is already activated
+$ python run_demo.py
 ```
 If all goes well, you will see the segmentation results in a file named "labels.png".
 
