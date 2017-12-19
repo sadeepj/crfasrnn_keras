@@ -50,7 +50,7 @@ Run `make` inside the `crfasrnn_keras/cpp` directory:
 $ cd crfasrnn_keras/cpp
 $ make
 ``` 
-Note that `python` command in the console should refer to the Python interpreter associated with your Tensorflow installation before running the `make` command above.
+Note that the `python` command in the console should refer to the Python interpreter associated with your Tensorflow installation before running the `make` command above.
 
 You will get a new file named `high_dim_filter.so` from this build. If it fails, refer to the official Tensorflow guide for [building a custom op](https://www.tensorflow.org/extend/adding_an_op#build_the_op_library) for help.
 
