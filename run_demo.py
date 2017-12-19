@@ -22,16 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import sys
+sys.path.insert(1, './src')
 from crfrnn_model import get_crfrnn_model_def
 import util
 
 
 def main():
-    input_file = "image.jpg"
-    output_file = "labels.png"
+    input_file = 'image.jpg'
+    output_file = 'labels.png'
 
     # Download the model from https://goo.gl/ciEYZi
-    saved_model_path = "crfrnn_keras_model.h5"
+    saved_model_path = 'crfrnn_keras_model.h5'
 
     model = get_crfrnn_model_def()
     model.load_weights(saved_model_path)
@@ -42,5 +44,5 @@ def main():
     segmentation.save(output_file)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

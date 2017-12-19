@@ -26,13 +26,13 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import gradient_checker
 from tensorflow.python.framework import constant_op
-custom_module = tf.load_op_library('./cpp/high_dim_filter.so')
-import high_dim_filter_grad  # To register gradients
+import high_dim_filter_loader
+custom_module = high_dim_filter_loader.custom_module
 
 
 class HighDimGradTest(tf.test.TestCase):
 
-    def testHighDimFilterGrad(self):
+    def test_high_dim_filter_grad(self):
         x_shape = [5, 10, 10]
 
         # Test inputs: unaries and RGB values
@@ -63,11 +63,11 @@ class HighDimGradTest(tf.test.TestCase):
             measure1 = np.mean(difference) / np.mean(computed)
             measure2 = np.max(difference) / np.max(computed)
 
-            print("Gradient check: measure1 = {:.6f}, measure2 = {:.6f}".format(measure1, measure2))
-            self.assertLess(measure1, 1e-3, "Errors found in the gradient computation.")
-            self.assertLess(measure2, 2e-2, "Errors found in the gradient computation.")
-            print("Gradient check: success!")
+            print('Gradient check: measure1 = {:.6f}, measure2 = {:.6f}'.format(measure1, measure2))
+            self.assertLess(measure1, 1e-3, 'Errors found in the gradient computation.')
+            self.assertLess(measure2, 2e-2, 'Errors found in the gradient computation.')
+            print('Gradient check: success!')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     tf.test.main()

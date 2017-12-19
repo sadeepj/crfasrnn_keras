@@ -25,8 +25,8 @@ SOFTWARE.
 import numpy as np
 import tensorflow as tf
 from keras.engine.topology import Layer
-custom_module = tf.load_op_library('./cpp/high_dim_filter.so')
-import high_dim_filter_grad  # Register gradients for the custom op
+import high_dim_filter_loader
+custom_module = high_dim_filter_loader.custom_module
 
 
 class CrfRnnLayer(Layer):

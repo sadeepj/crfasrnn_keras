@@ -67,13 +67,13 @@ def get_preprocessed_image(file_name):
     mean_values = np.array([123.68, 116.779, 103.939], dtype=np.float32)  # RGB mean values
     mean_values = mean_values.reshape(1, 1, 3)
     im = np.array(Image.open(file_name)).astype(np.float32)
-    assert im.ndim == 3, "Only RGB images are supported."
+    assert im.ndim == 3, 'Only RGB images are supported.'
     im = im - mean_values
     im = im[:, :, ::-1]
     img_h, img_w, img_c = im.shape
-    assert img_c == 3, "Only RGB images are supported."
+    assert img_c == 3, 'Only RGB images are supported.'
     if img_h > 500 or img_w > 500:
-        raise ValueError("Please resize your images to be not bigger than 500 x 500.")
+        raise ValueError('Please resize your images to be not bigger than 500 x 500.')
 
     pad_h = 500 - img_h
     pad_w = 500 - img_w
@@ -87,7 +87,7 @@ def get_label_image(probs, img_h, img_w):
     Note: This method assumes 'channels_last' data format.
     """
 
-    labels = probs.argmax(axis=2).astype("uint8")[:img_h, :img_w]
-    label_im = Image.fromarray(labels, "P")
+    labels = probs.argmax(axis=2).astype('uint8')[:img_h, :img_w]
+    label_im = Image.fromarray(labels, 'P')
     label_im.putpalette(_PALETTE)
     return label_im
