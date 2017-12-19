@@ -32,7 +32,7 @@ The root directory of the clone will be referred to as `crfasrnn_keras` hereafte
 Use the `requirements.txt` file (or `requirements_gpu.txt`, if you have a GPU device) in this repository to install all the dependencies via `pip`:
 ```
 $ cd crfasrnn_keras
-$ pip install -r requirements_gpu.txt  # If you have a GPU device, use requirements_gpu.txt instead
+$ pip install -r requirements.txt  # If you have a GPU device, use requirements_gpu.txt instead
 ```
 As you can notice from the contents of `requirements.txt`, we only depend on `tensorflow`, `keras`, and `h5py`. Additionally, `Pillow` is required for running the demo.
 After installing the dependencies, run the following commands to make sure they are properly installed:
