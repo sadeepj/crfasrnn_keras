@@ -27,14 +27,14 @@ The root directory of the clone will be referred to as `crfasrnn_keras` hereafte
 
 ### Step 2: Install dependencies
 
-**Note**: If you're using a Python virtualenv, make sure it's activated before running each command in this guide.
+**Note**: If you are using a Python virtualenv, make sure it is activated before running each command in this guide.
 
-Use the `requirements.txt` file in this repository to install all the dependencies via `pip`. If you have a GPU device use `requirements_gpu.txt` instead.
+Use the `requirements.txt` file (or `requirements_gpu.txt`, if you have a GPU device) in this repository to install all the dependencies via `pip`:
 ```
 $ cd crfasrnn_keras
 $ pip install -r requirements_gpu.txt  # If you have a GPU device, use requirements_gpu.txt instead
 ```
-As you can notice from the contents of `requirements.txt`, we only depend on `tensorflow`, `keras`, and `h5py`. `Pillow` is only required for running the demo.
+As you can notice from the contents of `requirements.txt`, we only depend on `tensorflow`, `keras`, and `h5py`. Additionally, `Pillow` is required for running the demo.
 After installing the dependencies, run the following commands to make sure they are properly installed:
 ```
 $ python
@@ -43,7 +43,7 @@ $ python
 ```
 You should not see any errors while importing `tensorflow` and `keras` above.
 
-### Step 3: Build CRF-RNN custom C++ code
+### Step 3: Build CRF-RNN custom op C++ code
 
 Run `make` inside the `cpp` directory:
 ```
