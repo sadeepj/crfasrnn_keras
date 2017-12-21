@@ -1,2 +1,2 @@
 *.pyc
-cpp/high_dim_filter.so
+src/cpp/high_dim_filter.so
