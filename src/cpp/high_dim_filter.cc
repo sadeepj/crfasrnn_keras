@@ -26,7 +26,7 @@
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "modified_permutohedral.h"
+#include "include/high_dim_filter.h"
 
 using namespace tensorflow;
 
@@ -61,19 +61,62 @@ void compute_bilateral_kernel(float * const output_kernel, const Tensor& rgb_ten
 }
 
 REGISTER_OP("HighDimFilter")
+    .Attr("T: {float}")
     .Attr("bilateral: bool")
     .Attr("theta_alpha: float = 1.0")
     .Attr("theta_beta: float = 1.0")
     .Attr("theta_gamma: float = 1.0")
     .Attr("backwards: bool = false")
-    .Input("raw: float32")
-    .Input("rgb: float32")
-    .Output("filtered: float32")
+    .Input("raw: T")
+    .Input("rgb: T")
+    .Output("filtered: T")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
       return Status::OK();
     });
 
+
+using CPUDevice = Eigen::ThreadPoolDevice;
+using GPUDevice = Eigen::GpuDevice;
+
+template <>
+struct HighDimFilterFunctor<CPUDevice> {
+  void operator()(const CPUDevice& d, 
+                  const tensorflow::Tensor & input_q,
+                  const tensorflow::Tensor & input_img,
+                  tensorflow::Tensor * out,
+                  const FilterParams & params) {
+    
+    ModifiedPermutohedral mp;
+
+    const int channels = input_q.dim_size(0);
+    const int height = input_img.dim_size(1);
+    const int width = input_img.dim_size(2);
+    const int num_pixels = width * height;
+
+    if (params.bilateral_) {
+      float * const kernel_vals = new float[5 * num_pixels];
+      compute_bilateral_kernel(kernel_vals, input_img,
+                               params.theta_alpha_, params.theta_beta_);
+      mp.init_cpu(kernel_vals, 5, num_pixels);
+      mp.compute_cpu(*out, input_q, channels, params.backwards_);
+
+      delete[] kernel_vals;
+    } else {
+      float * const kernel_vals = new float[2 * num_pixels];
+      compute_spatial_kernel(kernel_vals, width, height, params.theta_gamma_);
+      mp.init_cpu(kernel_vals, 2, num_pixels);
+      mp.compute_cpu(*out, input_q, channels, params.backwards_);
+
+      delete[] kernel_vals;
+    }
+  
+  }
+
+};
+
+
+template <typename Device, typename T>
 class HighDimFilterOp : public OpKernel {
  public:
   explicit HighDimFilterOp(OpKernelConstruction* context) : OpKernel(context) {
@@ -97,36 +140,25 @@ class HighDimFilterOp : public OpKernel {
     // Grab the RGB image tensor
     const Tensor& image_tensor = context->input(1);
 
-    const int channels = input_tensor.dim_size(0);
-    const int height = input_tensor.dim_size(1);
-    const int width = input_tensor.dim_size(2);
-    const int num_pixels = width * height;
-
     // Create the output tensor
     Tensor* output_tensor = NULL;
     OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(),
                                                      &output_tensor));
-    ModifiedPermutohedral mp;
 
-    if (bilateral_) {
-      float * const kernel_vals = new float[5 * num_pixels];
-      compute_bilateral_kernel(kernel_vals, image_tensor,
-                               theta_alpha_, theta_beta_);
-      mp.init(kernel_vals, 5, num_pixels);
-      mp.compute(*output_tensor, input_tensor, channels, backwards_);
-
-      delete[] kernel_vals;
-    } else {
-      float * const kernel_vals = new float[2 * num_pixels];
-      compute_spatial_kernel(kernel_vals, width, height, theta_gamma_);
-      mp.init(kernel_vals, 2, num_pixels);
-      mp.compute(*output_tensor, input_tensor, channels, backwards_);
-
-      delete[] kernel_vals;
-    }
-
+    const FilterParams params(bilateral_, 
+                        theta_alpha_,
+                        theta_beta_, 
+                        theta_gamma_,
+                        backwards_);
+    //filter
+    HighDimFilterFunctor<Device>()(
+                   context->eigen_device<Device>(),
+                   input_tensor,
+                   image_tensor,
+                   output_tensor,
+                   params);
   }
- 
+
  private:
   bool bilateral_;
   float theta_alpha_;
@@ -135,4 +167,19 @@ class HighDimFilterOp : public OpKernel {
   bool backwards_;
 };
 
-REGISTER_KERNEL_BUILDER(Name("HighDimFilter").Device(DEVICE_CPU), HighDimFilterOp);
+
+// Register kernels
+#define REGISTER_CPU(T)                         \
+  REGISTER_KERNEL_BUILDER(                      \
+      Name("HighDimFilter").Device(DEVICE_CPU).TypeConstraint<T>("T"), \
+      HighDimFilterOp<CPUDevice, T>);
+REGISTER_CPU(float);
+
+#if FILTER_GPU
+#define REGISTER_GPU(T)                                          \
+  REGISTER_KERNEL_BUILDER(                                       \
+      Name("HighDimFilter").Device(DEVICE_GPU).TypeConstraint<T>("T"), \
+      HighDimFilterOp<GPUDevice, T>);
+REGISTER_GPU(float);
+#endif
+

@@ -45,6 +45,8 @@ You should not see any errors while importing `tensorflow` and `keras` above.
 
 ### Step 3: Build CRF-RNN custom op C++ code
 
+**Note**: Edit the makefile to select whether to run on GPU/CPU. 
+
 Run `make` inside the `crfasrnn_keras/src/cpp` directory:
 ```
 $ cd crfasrnn_keras/src/cpp
