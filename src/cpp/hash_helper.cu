@@ -1,3 +1,5 @@
+//This file is take from caffe/crfasrnn
+
 
 #define modHash(n) ((n)%(2*table_capacity));
 

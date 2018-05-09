@@ -1,3 +1,6 @@
+//This file is take from torrvision/crfasrnn
+
+
 #ifndef HASH_TABLE_HPP
 #define HASH_TABLE_HPP
 
