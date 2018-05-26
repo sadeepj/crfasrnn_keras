@@ -88,7 +88,7 @@ class CrfRnnLayer(Layer):
         q_values = unaries
 
         for i in range(self.num_iterations):
-            softmax_out = tf.nn.softmax(q_values, axis=0)
+            softmax_out = tf.nn.softmax(q_values, 0)
 
             # Spatial filtering
             spatial_out = custom_module.high_dim_filter(softmax_out, rgb, bilateral=False,
