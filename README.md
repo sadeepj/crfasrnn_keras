@@ -69,5 +69,5 @@ If all goes well, you will see the segmentation results in a file named "labels.
 
 
 ## Limitations of the Current Version
-1. Currently, some operations in the CRF-RNN layer can only run on the CPU. An all-GPU version will be released soon.
-2. Current implementation of CrfRnnLayer only supports batch_size == 1
+1. Current implementation of the CrfRnnLayer only supports batch_size == 1
+2. An experimental GPU version of the CrfRnnLayer is available under the `gpu_support` branch. This branch has been tested with CUDA 9 and Tensorflow 1.7 only.
