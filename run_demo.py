@@ -26,7 +26,7 @@ import sys
 sys.path.insert(1, './src')
 from crfrnn_model import get_crfrnn_model_def
 import util
-
+import time
 
 def main():
     input_file = 'image.jpg'
@@ -39,9 +39,12 @@ def main():
     model.load_weights(saved_model_path)
 
     img_data, img_h, img_w = util.get_preprocessed_image(input_file)
+    tic = time.clock()
     probs = model.predict(img_data, verbose=False)[0, :, :, :]
+    toc = time.clock()
     segmentation = util.get_label_image(probs, img_h, img_w)
     segmentation.save(output_file)
+    print "Time taken: " + str(toc - tic)
 
 
 if __name__ == '__main__':
