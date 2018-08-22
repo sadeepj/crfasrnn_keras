@@ -39,27 +39,33 @@ struct FilterParams
 {
   FilterParams(bool bilateral, 
                float theta_alpha, 
+               float theta_alpha_z,
                float theta_beta, 
                float theta_gamma, 
+               float theta_gamma_z,
                bool backwards) : 
                bilateral_(bilateral), 
-               theta_alpha_(theta_alpha), 
+               theta_alpha_(theta_alpha),
+               theta_alpha_z_(theta_alpha_z), 
                theta_beta_(theta_beta), 
                theta_gamma_(theta_gamma), 
+               theta_gamma_z_(theta_gamma_z),
                backwards_(backwards) {}
 
    bool bilateral_;
    float theta_alpha_;
+   float theta_alpha_z_;
    float theta_beta_;
    float theta_gamma_;
+   float theta_gamma_z_;
    bool backwards_;
 };
 
 template <typename Device>
 struct HighDimFilterFunctor {
   void operator()(const Device& d, 
-                  const tensorflow::Tensor & input_q,
-                  const tensorflow::Tensor & input_img,
+                  const tensorflow::Tensor & unary_tensor,
+                  const tensorflow::Tensor & image_tensor,
                   tensorflow::Tensor * out,
                   const FilterParams & params);
 };
