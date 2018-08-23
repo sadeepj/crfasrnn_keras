@@ -25,7 +25,7 @@ SOFTWARE.
 import numpy as np
 import tensorflow as tf
 from keras.engine.topology import Layer
-from .high_dim_filter_loader import custom_module
+from high_dim_filter_loader import custom_module
 
 
 def _diagonal_initializer(shape):
