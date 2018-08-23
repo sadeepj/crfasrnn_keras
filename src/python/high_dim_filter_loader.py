@@ -25,10 +25,11 @@ SOFTWARE.
 import os
 import tensorflow as tf
 from tensorflow.python.framework import ops
-custom_module = tf.load_op_library(os.path.join(os.path.dirname(__file__), 
-                                   '..', 
-                                   'cpp', 
-                                   'high_dim_filter.so'))
+custom_module = tf.load_op_library(os.path.join(os.path.dirname(__file__),
+                                                '..',
+                                                'cpp',
+                                                'build',
+                                                'high_dim_filter.so'))
 
 
 @ops.RegisterGradient('HighDimFilter')
