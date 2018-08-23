@@ -25,7 +25,7 @@ SOFTWARE.
 from keras.models import Model
 from keras.layers import Conv2D, MaxPooling2D, Input, ZeroPadding2D, \
     Dropout, Conv2DTranspose, Cropping2D, Add
-from crfrnn_layer import CrfRnnLayer
+from .crfrnn_layer import CrfRnnLayer2D
 
 
 def get_crfrnn_model_def():
@@ -102,13 +102,13 @@ def get_crfrnn_model_def():
     upsample = Conv2DTranspose(21, (16, 16), strides=8, name='upsample', use_bias=False)(score_final)
     upscore = Cropping2D(((31, 37), (31, 37)))(upsample)
 
-    output = CrfRnnLayer(image_dims=(height, weight),
-                         num_classes=21,
-                         theta_alpha=160.,
-                         theta_beta=3.,
-                         theta_gamma=3.,
-                         num_iterations=10,
-                         name='crfrnn')([upscore, img_input])
+    output = CrfRnnLayer2D(image_dims=(height, weight),
+                           num_classes=21,
+                           theta_alpha=160.,
+                           theta_beta=3.,
+                           theta_gamma=3.,
+                           num_iterations=10,
+                           name='crfrnn')([upscore, img_input])
 
     # Build the model
     model = Model(img_input, output, name='crfrnn_net')

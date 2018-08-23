@@ -25,8 +25,7 @@ SOFTWARE.
 import numpy as np
 import tensorflow as tf
 from keras.engine.topology import Layer
-import high_dim_filter_loader
-custom_module = high_dim_filter_loader.custom_module
+from .high_dim_filter_loader import custom_module
 
 
 def _diagonal_initializer(shape):
@@ -37,76 +36,230 @@ def _potts_model_initializer(shape):
     return -1 * _diagonal_initializer(shape)
 
 
-class CrfRnnLayer(Layer):
-    """ Implements the CRF-RNN layer described in:
+class CrfRnnLayer3D(Layer):
+    """ Implements a 3D variant of the 2D CRF-RNN layer described in:
 
     Conditional Random Fields as Recurrent Neural Networks,
-    S. Zheng, S. Jayasumana, B. Romera-Paredes, V. Vineet, Z. Su, D. Du, C. Huang and P. Torr,
-    ICCV 2015
+    S. Zheng, S. Jayasumana, B. Romera-Paredes, V. Vineet, Z. Su, D. Du,
+    C. Huang and P. Torr, ICCV 2015
     """
 
-    def __init__(self, image_dims, num_classes,
-                 theta_alpha, theta_beta, theta_gamma,
-                 num_iterations, **kwargs):
+    def __init__(self,
+                 image_dims,
+                 num_classes,
+                 theta_alpha=160.,
+                 theta_alpha_z=40.,
+                 theta_beta=3.,
+                 theta_gamma=3.,
+                 theta_gamma_z=1.,
+                 num_iterations=10,
+                 **kwargs):
         self.image_dims = image_dims
         self.num_classes = num_classes
         self.theta_alpha = theta_alpha
+        self.theta_alpha_z = theta_alpha_z
         self.theta_beta = theta_beta
         self.theta_gamma = theta_gamma
+        self.theta_gamma_z = theta_gamma_z
         self.num_iterations = num_iterations
+
         self.spatial_ker_weights = None
         self.bilateral_ker_weights = None
         self.compatibility_matrix = None
-        super(CrfRnnLayer, self).__init__(**kwargs)
+
+        super(CrfRnnLayer3D, self).__init__(**kwargs)
+
+        pass
 
     def build(self, input_shape):
         # Weights of the spatial kernel
-        self.spatial_ker_weights = self.add_weight(name='spatial_ker_weights',
-                                                   shape=(self.num_classes, self.num_classes),
-                                                   initializer=_diagonal_initializer,
-                                                   trainable=True)
+        self.spatial_ker_weights = self.add_weight(
+            name='spatial_ker_weights',
+            shape=(self.num_classes, self.num_classes),
+            initializer=_diagonal_initializer,
+            trainable=True)
 
         # Weights of the bilateral kernel
-        self.bilateral_ker_weights = self.add_weight(name='bilateral_ker_weights',
-                                                     shape=(self.num_classes, self.num_classes),
-                                                     initializer=_diagonal_initializer,
-                                                     trainable=True)
+        self.bilateral_ker_weights = self.add_weight(
+            name='bilateral_ker_weights',
+            shape=(self.num_classes, self.num_classes),
+            initializer=_diagonal_initializer,
+            trainable=True)
 
         # Compatibility matrix
-        self.compatibility_matrix = self.add_weight(name='compatibility_matrix',
-                                                    shape=(self.num_classes, self.num_classes),
-                                                    initializer=_potts_model_initializer,
-                                                    trainable=True)
+        self.compatibility_matrix = self.add_weight(
+            name='compatibility_matrix',
+            shape=(self.num_classes, self.num_classes),
+            initializer=_potts_model_initializer,
+            trainable=True)
 
-        super(CrfRnnLayer, self).build(input_shape)
+        super(CrfRnnLayer3D, self).build(input_shape)
+
+        pass
 
     def call(self, inputs):
-        unaries = tf.transpose(inputs[0][0, :, :, :], perm=(2, 0, 1))
-        rgb = tf.transpose(inputs[1][0, :, :, :], perm=(2, 0, 1))
+        image = inputs[0, 0:-self.num_classes, ...]
+        unaries = inputs[0, -self.num_classes:, ...]
 
-        c, h, w = self.num_classes, self.image_dims[0], self.image_dims[1]
-        all_ones = np.ones((c, h, w), dtype=np.float32)
+        c = self.num_classes
+        d, h, w = self.image_dims
 
         # Prepare filter normalization coefficients
-        spatial_norm_vals = custom_module.high_dim_filter(all_ones, rgb, bilateral=False,
-                                                          theta_gamma=self.theta_gamma)
-        bilateral_norm_vals = custom_module.high_dim_filter(all_ones, rgb, bilateral=True,
-                                                            theta_alpha=self.theta_alpha,
-                                                            theta_beta=self.theta_beta)
+        all_ones = np.ones((c, d, h, w), dtype=np.float32)
+        spatial_norm_vals = custom_module.high_dim_filter(
+            all_ones,
+            image,
+            bilateral=False,
+            theta_gamma=self.theta_gamma,
+            theta_gamma_z=self.theta_gamma_z)
+        bilateral_norm_vals = custom_module.high_dim_filter(
+            all_ones,
+            image,
+            bilateral=True,
+            theta_alpha=self.theta_alpha,
+            theta_alpha_z=self.theta_alpha_z,
+            theta_beta=self.theta_beta)
+
         q_values = unaries
 
         for i in range(self.num_iterations):
             softmax_out = tf.nn.softmax(q_values, 0)
 
             # Spatial filtering
-            spatial_out = custom_module.high_dim_filter(softmax_out, rgb, bilateral=False,
-                                                        theta_gamma=self.theta_gamma)
+            spatial_out = custom_module.high_dim_filter(
+                softmax_out,
+                image,
+                bilateral=False,
+                theta_gamma=self.theta_gamma,
+                theta_gamma_z=self.theta_gamma_z)
             spatial_out = spatial_out / spatial_norm_vals
 
             # Bilateral filtering
-            bilateral_out = custom_module.high_dim_filter(softmax_out, rgb, bilateral=True,
-                                                          theta_alpha=self.theta_alpha,
-                                                          theta_beta=self.theta_beta)
+            bilateral_out = custom_module.high_dim_filter(
+                softmax_out,
+                image,
+                bilateral=True,
+                theta_alpha=self.theta_alpha,
+                theta_alpha_z=self.theta_alpha_z,
+                theta_beta=self.theta_beta)
+            bilateral_out = bilateral_out / bilateral_norm_vals
+
+            # Weighting filter outputs
+            message_passing = (tf.matmul(self.spatial_ker_weights,
+                                         tf.reshape(spatial_out, (c, -1))) +
+                               tf.matmul(self.bilateral_ker_weights,
+                                         tf.reshape(bilateral_out, (c, -1))))
+
+            # Compatibility transform
+            pairwise = tf.matmul(self.compatibility_matrix, message_passing)
+
+            # Adding unary potentials
+            pairwise = tf.reshape(pairwise, (c, d, h, w))
+            q_values = unaries - pairwise
+
+        return tf.reshape(q_values, (1, c, d, h, w))
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+
+class CrfRnnLayer2D(Layer):
+    """ Implements the 2D CRF-RNN layer described in:
+
+    Conditional Random Fields as Recurrent Neural Networks,
+    S. Zheng, S. Jayasumana, B. Romera-Paredes, V. Vineet, Z. Su, D. Du,
+    C. Huang and P. Torr, ICCV 2015
+    """
+
+    def __init__(self,
+                 image_dims,
+                 num_classes,
+                 theta_alpha=160.,
+                 theta_beta=3.,
+                 theta_gamma=3.,
+                 num_iterations=10,
+                 **kwargs):
+        self.image_dims = image_dims
+        self.num_classes = num_classes
+        self.theta_alpha = theta_alpha
+        self.theta_beta = theta_beta
+        self.theta_gamma = theta_gamma
+        self.num_iterations = num_iterations
+
+        self.spatial_ker_weights = None
+        self.bilateral_ker_weights = None
+        self.compatibility_matrix = None
+
+        super(CrfRnnLayer2D, self).__init__(**kwargs)
+
+        pass
+
+    def build(self, input_shape):
+        # Weights of the spatial kernel
+        self.spatial_ker_weights = self.add_weight(
+            name='spatial_ker_weights',
+            shape=(self.num_classes, self.num_classes),
+            initializer=_diagonal_initializer,
+            trainable=True)
+
+        # Weights of the bilateral kernel
+        self.bilateral_ker_weights = self.add_weight(
+            name='bilateral_ker_weights',
+            shape=(self.num_classes, self.num_classes),
+            initializer=_diagonal_initializer,
+            trainable=True)
+
+        # Compatibility matrix
+        self.compatibility_matrix = self.add_weight(
+            name='compatibility_matrix',
+            shape=(self.num_classes, self.num_classes),
+            initializer=_potts_model_initializer,
+            trainable=True)
+
+        super(CrfRnnLayer2D, self).build(input_shape)
+
+        pass
+
+    def call(self, inputs):
+        unaries = inputs[0, 0:self.num_classes, ...]
+        image = inputs[0, self.num_classes:, ...]
+
+        c, h, w = self.num_classes, self.image_dims[0], self.image_dims[1]
+        all_ones = np.ones((c, h, w), dtype=np.float32)
+
+        # Prepare filter normalization coefficients
+        spatial_norm_vals = custom_module.high_dim_filter(
+            all_ones,
+            image,
+            bilateral=False,
+            theta_gamma=self.theta_gamma)
+        bilateral_norm_vals = custom_module.high_dim_filter(
+            all_ones,
+            image,
+            bilateral=True,
+            theta_alpha=self.theta_alpha,
+            theta_beta=self.theta_beta)
+
+        q_values = unaries
+
+        for i in range(self.num_iterations):
+            softmax_out = tf.nn.softmax(q_values, 0)
+
+            # Spatial filtering
+            spatial_out = custom_module.high_dim_filter(
+                softmax_out,
+                image,
+                bilateral=False,
+                theta_gamma=self.theta_gamma)
+            spatial_out = spatial_out / spatial_norm_vals
+
+            # Bilateral filtering
+            bilateral_out = custom_module.high_dim_filter(
+                softmax_out,
+                image,
+                bilateral=True,
+                theta_alpha=self.theta_alpha,
+                theta_beta=self.theta_beta)
             bilateral_out = bilateral_out / bilateral_norm_vals
 
             # Weighting filter outputs
@@ -122,7 +275,7 @@ class CrfRnnLayer(Layer):
             pairwise = tf.reshape(pairwise, (c, h, w))
             q_values = unaries - pairwise
 
-        return tf.transpose(tf.reshape(q_values, (1, c, h, w)), perm=(0, 2, 3, 1))
+        return tf.reshape(q_values, (1, c, h, w))
 
     def compute_output_shape(self, input_shape):
         return input_shape
