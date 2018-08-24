@@ -26,8 +26,8 @@
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MODIFIED_PERMUTOHEDRAL_HPP_
-#define MODIFIED_PERMUTOHEDRAL_HPP_
+#ifndef MODIFIED_PERMUTOHEDRAL_3D_HPP_
+#define MODIFIED_PERMUTOHEDRAL_3D_HPP_
 
 #include <cstdlib>
 #include <vector>
@@ -46,13 +46,13 @@ using namespace tensorflow;
 /***          ModifiedPermutohedral Lattice   ***/
 /************************************************/
 
-typedef struct MatrixEntry {
+typedef struct MatrixEntry3D {
   int index;
   float weight;
-} MatrixEntry;
+} MatrixEntry3D;
 
 
-class ModifiedPermutohedral {
+class ModifiedPermutohedral3D {
 protected:
   struct Neighbors {
     int n1, n2;
@@ -66,11 +66,11 @@ protected:
   std::vector<Neighbors> blur_neighbors_;
   #if __CUDACC__
   bool is_init;
-  MatrixEntry * matrix;
+  MatrixEntry3D * matrix;
   HashTable table;
   #endif
   // Number of elements, size of sparse discretized space, dimension of features
-  int N_, M_, d_, w_, h_;
+  int N_, M_, ndim_, w_, h_, d_;
 
   void sseCompute(Tensor &out, const Tensor &in, int value_size,
                   bool reverse = false, bool add = false) const;
@@ -81,11 +81,11 @@ protected:
 
 public:
   #if __CUDACC__
-  ModifiedPermutohedral() : N_( 0 ), M_( 0 ), d_( 0 ), is_init( false ) {}
+  ModifiedPermutohedral3D() : N_( 0 ), M_( 0 ), ndim_( 0 ), is_init( false ) {}
   #else
-  ModifiedPermutohedral() : N_( 0 ), M_( 0 ), d_( 0 ) {}
+  ModifiedPermutohedral3D() : N_( 0 ), M_( 0 ), ndim_( 0 ) {}
   #endif
-  ~ModifiedPermutohedral() {}
+  ~ModifiedPermutohedral3D() {}
 
   #if __CUDACC__
   void freeMatrix(){
@@ -96,7 +96,7 @@ public:
   #endif
 
   void init_cpu(const float *features, int num_dimensions, int num_points);
-  void init_gpu(const float* features, int num_dimensions, int w, int h);
+  void init_gpu(const float *features, int num_dimensions, int w, int h, int d);
 
   void compute_cpu(Tensor &out, const Tensor &in, int value_size,
                bool reverse = false, bool add = false) const;
@@ -104,4 +104,4 @@ public:
                bool reverse = false, bool add = false) const;
 };
 
-#endif //_MODIFIED_PERMUTOHEDRAL_HPP_
+#endif //_MODIFIED_PERMUTOHEDRAL_3D_HPP_

@@ -30,6 +30,7 @@
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "modified_permutohedral.h"
+#include "modified_permutohedral_3d.h"
 
 
 using GPUDevice = Eigen::GpuDevice;

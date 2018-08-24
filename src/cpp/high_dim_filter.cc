@@ -161,14 +161,14 @@ struct HighDimFilterFunctor<CPUDevice> {
       if (is_3d) {
         compute_bilateral_kernel_3d(kernel_vals,
                                     image_tensor,
-                                    theta_alpha_,
-                                    theta_alpha_z_,
-                                    theta_beta_);
+                                    params.theta_alpha_,
+                                    params.theta_alpha_z_,
+                                    params.theta_beta_);
       } else {
         compute_bilateral_kernel(kernel_vals,
                                  image_tensor,
-                                 theta_alpha_,
-                                 theta_beta_);
+                                 params.theta_alpha_,
+                                 params.theta_beta_);
       }
       mp.init_cpu(kernel_vals, bilateral_channels, num_pixels);
       mp.compute_cpu(*out, unary_tensor, unary_channels, params.backwards_);
@@ -181,13 +181,13 @@ struct HighDimFilterFunctor<CPUDevice> {
                                   width,
                                   height,
                                   depth,
-                                  theta_gamma_,
-                                  theta_gamma_z_);
+                                  params.theta_gamma_,
+                                  params.theta_gamma_z_);
       } else {
         compute_spatial_kernel(kernel_vals,
                                width,
                                height,
-                               theta_gamma_);
+                               params.theta_gamma_);
       }
       mp.init_cpu(kernel_vals, spatial_dims, num_pixels);
       mp.compute_cpu(*out, unary_tensor, unary_channels, params.backwards_);
@@ -224,13 +224,13 @@ class HighDimFilterOp : public OpKernel {
   void Compute(OpKernelContext* context) override {
 
     // Grab the unary tensor
-    const Tensor& input_tensor = context->input(0);
+    const Tensor& unary_tensor = context->input(0);
     // Grab the RGB image tensor
     const Tensor& image_tensor = context->input(1);
 
     // Create the output tensor
     Tensor* output_tensor = NULL;
-    OP_REQUIRES_OK(context, context->allocate_output(0, input_tensor.shape(),
+    OP_REQUIRES_OK(context, context->allocate_output(0, unary_tensor.shape(),
                                                      &output_tensor));
 
     const FilterParams params(bilateral_, 
@@ -243,7 +243,7 @@ class HighDimFilterOp : public OpKernel {
     //filter
     HighDimFilterFunctor<Device>()(
                    context->eigen_device<Device>(),
-                   input_tensor,
+                   unary_tensor,
                    image_tensor,
                    output_tensor,
                    params);

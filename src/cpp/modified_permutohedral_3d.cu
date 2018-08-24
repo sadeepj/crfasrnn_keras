@@ -1,12 +1,16 @@
-//This file is take from torrvision/crfasrnn
+//Modification to the file modified_permutohedral.h from torrvision/crfasrnn
 
-#define BLOCK_SIZE 64
+#define BLOCK_SIZE_XY 8
+#define BLOCK_SIZE_Z 4
+#define CLEAN_BLOCK_SIZE 32
 
 #include <stdio.h>
-#include "include/modified_permutohedral.h"
+#include "include/modified_permutohedral_3d.h"
 #include "include/cuda_macros.h"
 #include "hash_helper.cu"
 
+
+const int BLOCK_SIZE = BLOCK_SIZE_XY * BLOCK_SIZE_XY * BLOCK_SIZE_Z;
 
 template <typename Dtype>
 __global__ void set_kernel(const int n, const Dtype alpha, Dtype* y) {
@@ -34,23 +38,32 @@ static void swapHashTableValues(float* oldValues, float *newValues, float* table
     CUDA_CHECK(cudaMemcpy(oldValues,table_values,size,cudaMemcpyDeviceToDevice));
     CUDA_CHECK(cudaMemcpy(table_values,newValues,size,cudaMemcpyDeviceToDevice));
     CUDA_CHECK(cudaMemcpy(newValues,oldValues,size,cudaMemcpyDeviceToDevice));
+    // Works but give poorer results
+    //oldValues = table_values;
+    //table_values = newValues;
+    //newValues = oldValues;
 }
 
 template<int pd>
-__global__ static void createMatrix(const int w, const int h,
+__global__ static void createMatrix(const int w, 
+                                    const int h,
+                                    const int d,
                                     const float *positions,
                                     int *table_entries,
                                     int table_capacity,
                                     signed short* table_keys,
                                     const float *scaleFactor,
-                                    MatrixEntry *matrix)
+                                    MatrixEntry3D *matrix)
 {
-    // 8x8 blocks
     const int x = threadIdx.x + blockIdx.x * blockDim.x;
     const int y = threadIdx.y + blockIdx.y * blockDim.y;
-    const int threadId = threadIdx.y*blockDim.x + threadIdx.x;
-    const int idx = y*w + x;
-    const bool outOfBounds = (x >= w) || (y >= h);
+    const int z = threadIdx.z + blockIdx.z * blockDim.z;
+    const int threadId = threadIdx.z * blockDim.x * blockDim.y 
+                          + threadIdx.y * blockDim.x 
+                          + threadIdx.x;
+    const int idx = z * w * h + y * w + x;
+    // TODO Keep searching for errors from here
+    const bool outOfBounds = (x >= w) || (y >= h) || (z >= d);
 
     float myElevated[pd+1];
     const float *myPosition = positions + idx*pd;
@@ -146,9 +159,12 @@ __global__ static void createMatrix(const int w, const int h,
         }
 
         if (!outOfBounds) {
-            MatrixEntry r;
-            r.index = hashTableInsert<pd>(myKey, table_keys, table_entries,
-                                          table_capacity,  idx*(pd+1)+color);
+            MatrixEntry3D r;
+            r.index = hashTableInsert<pd>(myKey, 
+                                          table_keys, 
+                                          table_entries,
+                                          table_capacity,  
+                                          idx*(pd+1)+color);
             r.weight = myBarycentric[color];
             matrix[idx*(pd+1) + color] = r;
         }
@@ -182,52 +198,61 @@ __global__ static void cleanHashTable(const int n,
 }
 
 template<int pd>
-__global__ static void resetIndex(const int w, const int h,
-                                  MatrixEntry *matrix,
+__global__ static void resetIndex(const int w, 
+                                  const int h,
+                                  const int d,
+                                  MatrixEntry3D *matrix,
                                   int *table_entries)
 {
     const int x = threadIdx.x + blockIdx.x * blockDim.x;
-    const int y = threadIdx.y + (blockIdx.y/(pd+1)) * blockDim.y;
-    const int color = blockIdx.y % (pd+1);
-    const int idx = y*w + x;
-    const bool outOfBounds = (x >= w) || (y >= h);
+    const int y = threadIdx.y + blockIdx.y * blockDim.y;
+    const int z = threadIdx.z + (blockIdx.z / (pd + 1)) * blockDim.z;
+    const int color = blockIdx.z % (pd + 1);
+    const int idx = z * h * w + y * w + x;
+    const bool outOfBounds = (x >= w) || (y >= h) || (z >= d);
     if (!outOfBounds){
-        MatrixEntry r = matrix[idx*(pd+1)+color];
+        MatrixEntry3D r = matrix[idx * (pd + 1) + color];
         matrix[idx*(pd+1)+color].index = table_entries[r.index];
     }
 }
 
 template<int pd, typename Dtype>
-__global__ static void splatCache(const int w, const int h, const int vd,
+__global__ static void splatCache(const int w, 
+                                  const int h, 
+                                  const int d,
+                                  const int vd,
                                   const Dtype *values,
-                                  const MatrixEntry *matrix,
+                                  const MatrixEntry3D *matrix,
                                   float *table_values)
 {
     const int x = threadIdx.x + blockIdx.x * blockDim.x;
-    const int y = threadIdx.y + (blockIdx.y/(pd+1)) * blockDim.y;
-    const int threadId = threadIdx.y*blockDim.x + threadIdx.x;
-    const int color = blockIdx.y % (pd+1);
-    const int idx = y*w + x;
-    const bool outOfBounds = (x >= w) || (y >= h);
+    const int y = threadIdx.y + blockIdx.y * blockDim.y;
+    const int z = threadIdx.z + (blockIdx.z / (pd + 1)) * blockDim.z;
+    const int threadId = threadIdx.z * blockDim.x * blockDim.y 
+                          + threadIdx.y * blockDim.x 
+                          + threadIdx.x;
+    const int color = blockIdx.z % (pd + 1);
+    const int idx = z * h * w + y * w + x;
+    const bool outOfBounds = (x >= w) || (y >= h) || (z >= d);
 
     __shared__ int sharedOffsets[BLOCK_SIZE];
     extern __shared__ float sharedValues[];
     int myOffset = -1;
-    float *myValue = sharedValues + threadId*(vd+1);
+    float *myValue = sharedValues + threadId * (vd + 1);
 
     if (!outOfBounds) {
 
         const Dtype *value = values + idx;
 
-        MatrixEntry r = matrix[idx*(pd+1)+color];
+        MatrixEntry3D r = matrix[idx * (pd + 1) + color];
 
         // convert the matrix entry from a pointer into the entries array to a pointer into the keys/values array
         //matrix[idx*(pd+1)+color].index = r.index = table_entries[r.index];
         // record the offset into the keys/values array in shared space
-        myOffset = sharedOffsets[threadId] = r.index*(vd+1);
+        myOffset = sharedOffsets[threadId] = r.index * (vd + 1);
 
         for (int j = 0; j < vd; j++) {
-            myValue[j] = (float)value[j*w*h]*r.weight;
+            myValue[j] = (float)value[j * w * h * d] * r.weight;
         }
         myValue[vd] = r.weight;
 
@@ -251,7 +276,8 @@ __global__ static void splatCache(const int w, const int h, const int vd,
             if (myOffset == sharedOffsets[i]) {
                 // someone else with lower priority cares about this key, accumulate it into mine
                 for (int j = 0; j <= vd; j++) {
-                    sharedValues[threadId*(vd+1) + j] += sharedValues[i*(vd+1) + j];
+                    sharedValues[threadId * (vd+1) + j] += 
+                        sharedValues[i * (vd + 1) + j];
                 }
             }
         }
@@ -260,13 +286,14 @@ __global__ static void splatCache(const int w, const int h, const int vd,
     // only the threads with something to write to main memory are still going
     float *val = table_values + myOffset;
     for (int j = 0; j <= vd; j++) {
-        atomicAdd(val+j, myValue[j]);
+        atomicAdd(val + j, myValue[j]);
     }
 }
 
 template<int pd>
-__global__ static void blur(int n, float *newValues,
-                            const MatrixEntry *matrix,
+__global__ static void blur(int n, 
+                            float *newValues,
+                            const MatrixEntry3D *matrix,
                             const int *table_entries,
                             const signed short *table_keys,
                             const int table_capacity,
@@ -324,43 +351,47 @@ __global__ static void blur(int n, float *newValues,
 }
 
 template<int pd, typename Dtype>
-__global__ static void slice(const int w, const int h, const int vd,
+__global__ static void slice(const int w, 
+                             const int h,
+                             const int d, 
+                             const int vd,
                              Dtype *values,
-                             const MatrixEntry *matrix,
+                             const MatrixEntry3D *matrix,
                              float *table_values,
                              bool add) {
-    //const int idx = blockIdx.x * BLOCK_SIZE + threadIdx.x;
-
     const int x = threadIdx.x + blockIdx.x * blockDim.x;
     const int y = threadIdx.y + blockIdx.y * blockDim.y;
-    const int threadId = threadIdx.y*blockDim.x + threadIdx.x;
-    const int idx = y*w + x;
-    const bool outOfBounds = (x >= w) || (y >= h);
+    const int z = threadIdx.z + blockIdx.z * blockDim.z;
+    const int threadId = threadIdx.z * blockDim.x * blockDim.y
+                          + threadIdx.y*blockDim.x 
+                          + threadIdx.x;
+    const int idx = z * h * w + y * w + x;
+    const bool outOfBounds = (x >= w) || (y >= h) || (z >= d);
 
     if (outOfBounds) return;
 
     extern __shared__ float localValue[];
 
-    float *myValue = localValue + threadId*vd;
+    float *myValue = localValue + threadId * vd;
 
     for (int i = 0; i < vd; i++) {
         myValue[i] = 0;
     }
 
     for (int i = 0; i <= pd; i++) {
-        MatrixEntry r = matrix[idx*(pd+1) + i];
-        const float *val = table_values + r.index*(vd+1);
+        MatrixEntry3D r = matrix[idx * (pd + 1) + i];
+        const float *val = table_values + r.index * (vd + 1);
         for (int j = 0; j < vd; j++) {
-            myValue[j] += r.weight*val[j];
+            myValue[j] += r.weight * val[j];
         }
     }
 
-    float alpha = 1.0f / (1+powf(2, -pd));
+    float alpha = 1.0f / (1 + powf(2, -pd));
     for (int j = 0; j < vd; j++){
         if(!add){
-            values[j*w*h + idx] = 0;
+            values[j * w * h * d + idx] = 0;
         }
-        values[j*w*h + idx] += myValue[j]*alpha;
+        values[j * w * h * d + idx] += myValue[j] * alpha;
     }
 }
 
@@ -368,12 +399,16 @@ __global__ static void slice(const int w, const int h, const int vd,
 template<int pd>
 void gpu_init(const float* features,
               HashTable* table,
-              MatrixEntry* matrix,
-              const int w, const int h)
+              MatrixEntry3D* matrix,
+              const int w, 
+              const int h,
+              const int d)
 {
-    int num_points = w*h ;
-    dim3 blocks((w-1)/8+1, (h-1)/8+1, 1);
-    dim3 blockSize(8, 8, 1);
+    int num_points = w * h * d ;
+    dim3 blocks((w - 1) / BLOCK_SIZE_XY + 1,
+                (h - 1) / BLOCK_SIZE_XY + 1,
+                (d - 1) / BLOCK_SIZE_Z + 1);
+    dim3 blockSize(BLOCK_SIZE_XY, BLOCK_SIZE_XY, BLOCK_SIZE_Z);
 
     float blurVariance = 0.5;
     float * scaleFactor;
@@ -388,7 +423,10 @@ void gpu_init(const float* features,
     CUDA_CHECK(cudaMalloc((void**)&scaleFactor, sizeof(float)*pd));
     CUDA_CHECK(cudaMemcpy(scaleFactor, scaleFactorHost, sizeof(float)*pd, cudaMemcpyHostToDevice));
 
-    createMatrix<pd><<<blocks, blockSize>>>(w, h,
+    createMatrix<pd><<<blocks, blockSize>>>(
+            w, 
+            h,
+            d,
             features,
             table->table_entries,
             table->table_capacity,
@@ -397,14 +435,23 @@ void gpu_init(const float* features,
             matrix);
     CUDA_POST_KERNEL_CHECK;
     // fix duplicate hash table entries
-    int cleanBlockSize = 32;
-    dim3 cleanBlocks((num_points-1)/cleanBlockSize+1, 2*(pd+1), 1);
-    cleanHashTable<pd><<<cleanBlocks, cleanBlockSize>>>(2*num_points*(pd+1),
-            table->table_entries, table->table_capacity, table->table_keys);
+    dim3 cleanBlocks((num_points - 1) / CLEAN_BLOCK_SIZE + 1, 
+                     2 * (pd + 1), 
+                     1);
+    cleanHashTable<pd><<<cleanBlocks, CLEAN_BLOCK_SIZE>>>(
+        2 * num_points * (pd + 1),
+        table->table_entries, 
+        table->table_capacity, 
+        table->table_keys);
     CUDA_POST_KERNEL_CHECK;
 
-    blocks.y *= pd+1;
-    resetIndex<pd><<<blocks, blockSize>>>(w, h, matrix, table->table_entries) ;
+    blocks.z *= pd + 1;
+    resetIndex<pd><<<blocks, blockSize>>>(
+        w, 
+        h, 
+        d,
+        matrix, 
+        table->table_entries) ;
     CUDA_POST_KERNEL_CHECK;
 
     // Clean intermediate variables
@@ -414,39 +461,55 @@ void gpu_init(const float* features,
 }
 
 template<int pd, typename Dtype>
-void gpu_compute(Dtype* out, const Dtype* in, const HashTable &table,
-                 const MatrixEntry* matrix,
-                 int w, int h, int vd,
-                 bool reverse, bool add){
+void gpu_compute(Dtype* out, 
+                 const Dtype* in, 
+                 const HashTable &table,
+                 const MatrixEntry3D* matrix,
+                 int w, 
+                 int h,
+                 int d, 
+                 int vd,
+                 bool reverse, 
+                 bool add){
 
     // Create table_values
-    int num_points = w*h ;
+    int num_points = w * h * d;
     float *table_values ;
-    CUDA_CHECK(cudaMalloc((void**)&table_values, sizeof(float)*(vd+1)*num_points*(pd+1))) ;
-    gpu_set<float>(num_points*(vd+1)*(pd+1), 0, table_values) ;
+    CUDA_CHECK(cudaMalloc((void**)&table_values, 
+                          sizeof(float) * (vd + 1) * num_points * (pd + 1)));
+    gpu_set<float>(num_points * (vd + 1) * (pd + 1), 0, table_values) ;
 
-    dim3 blocks((w-1)/8+1, (h-1)/8+1, 1);
-    dim3 blockSize(8, 8, 1);
+    dim3 blocks((w - 1) / BLOCK_SIZE_XY + 1,
+                (h - 1) / BLOCK_SIZE_XY + 1,
+                (d - 1) / BLOCK_SIZE_Z + 1);
+    dim3 blockSize(BLOCK_SIZE_XY, BLOCK_SIZE_XY, BLOCK_SIZE_Z);
 
-    // splat splits by color, so extend the y coordinate to our blocks to represent that
-    blocks.y *= pd+1;
-    splatCache<pd, Dtype><<<blocks, blockSize, BLOCK_SIZE*(vd+1)*sizeof(float)>>>(w, h, vd,
-            in,
-            matrix,
-            table_values);
+    // splat splits by color, so extend the z coordinate to our blocks to represent that
+    blocks.z *= (pd + 1);
+    splatCache<pd, Dtype><<<blocks, 
+                            blockSize, 
+                            BLOCK_SIZE * (vd + 1) * sizeof(float)>>>(
+                                w, 
+                                h, 
+                                d,
+                                vd,
+                                in,
+                                matrix,
+                                table_values);
     CUDA_POST_KERNEL_CHECK;
 
     // blur
-    int cleanBlockSize = 32;
-    dim3 cleanBlocks((num_points-1)/cleanBlockSize+1, 2*(pd+1), 1);
+    dim3 cleanBlocks((num_points - 1) / CLEAN_BLOCK_SIZE + 1, 2 * (pd + 1), 1);
     float *newValues;
     float *oldValues;
-    size_t size =  num_points*(pd+1)*(vd+1)*sizeof(float);
+    size_t size =  num_points * (pd + 1) * (vd + 1) * sizeof(float);
     CUDA_CHECK(cudaMalloc((void**)&(newValues), size));
     CUDA_CHECK(cudaMalloc((void**)&(oldValues), size));
-    gpu_set<float>(num_points*(vd+1)*(pd+1), 0, newValues) ;
-    for (int color = reverse?pd:0; color <= pd && color>=0; reverse?color--:color++) {
-        blur<pd><<<cleanBlocks, cleanBlockSize>>>(num_points*(pd+1), newValues,
+    gpu_set<float>(num_points * (vd + 1) * (pd + 1), 0, newValues) ;
+    for (int color = reverse ? pd : 0; 
+         color <= pd && color>=0; 
+         reverse ? color-- : color++) {
+        blur<pd><<<cleanBlocks, CLEAN_BLOCK_SIZE>>>(num_points * (pd + 1), newValues,
                 matrix,
                 table.table_entries,
                 table.table_keys,
@@ -460,8 +523,18 @@ void gpu_compute(Dtype* out, const Dtype* in, const HashTable &table,
     }
 
     // slice
-    blocks.y /= (pd+1);
-    slice<pd, Dtype><<<blocks, blockSize, sizeof(float)*BLOCK_SIZE*vd>>>(w, h, vd, out, matrix, table_values, add);
+    blocks.z /= (pd + 1);
+    slice<pd, Dtype><<<blocks, 
+                       blockSize, 
+                       sizeof(float) * BLOCK_SIZE * vd>>>(
+                            w, 
+                            h, 
+                            d,
+                            vd, 
+                            out, 
+                            matrix, 
+                            table_values, 
+                            add);
     CUDA_POST_KERNEL_CHECK;
 
     // Free memory
@@ -470,45 +543,52 @@ void gpu_compute(Dtype* out, const Dtype* in, const HashTable &table,
     CUDA_CHECK(cudaFree(oldValues)) ;
 }
 
-void ModifiedPermutohedral::init_gpu(const float* features, int num_dimensions, int w, int h) {
+void ModifiedPermutohedral3D::init_gpu(const float* features, 
+                                     int num_dimensions, 
+                                     int w, 
+                                     int h,
+                                     int d) {
     //Initialize Hash table
     if(!is_init){
-        table.createHashTable(w*h*(num_dimensions+1), num_dimensions);
-        CUDA_CHECK(cudaMalloc((void **)&matrix, sizeof(MatrixEntry)*(w*h*(num_dimensions+1))));
+        table.createHashTable(w * h * d * (num_dimensions+1), num_dimensions);
+        int matrixSize = 
+            sizeof(MatrixEntry3D) * (w * h * d * (num_dimensions+1));
+        CUDA_CHECK(cudaMalloc((void **)&matrix, matrixSize));
     } else {
-        table.resetHashTable(w_*h_*(d_+1), d_);
+        table.resetHashTable(w_ * h_ * d_ * (ndim_ + 1), ndim_);
     }
-    w_ = w ;
-    h_ = h ;
-    d_ = num_dimensions ;
-    N_ = w*h ;
-    switch(num_dimensions){
+    w_ = w;
+    h_ = h;
+    d_ = d;
+    ndim_ = num_dimensions ;
+    N_ = w * h * d ;
+    switch(ndim_) {
       case 2:
-        gpu_init<2>(features, &table, matrix, w_, h_);
+        gpu_init<2>(features, &table, matrix, w_, h_, d_);
         break;
       case 3:
-        gpu_init<3>(features, &table, matrix, w_, h_);
+        gpu_init<3>(features, &table, matrix, w_, h_, d_);
         break;
       case 4:
-        gpu_init<4>(features, &table, matrix, w_, h_);
+        gpu_init<4>(features, &table, matrix, w_, h_, d_);
         break; 
       case 5:
-        gpu_init<5>(features, &table, matrix, w_, h_);
+        gpu_init<5>(features, &table, matrix, w_, h_, d_);
         break;
       case 6:
-        gpu_init<6>(features, &table, matrix, w_, h_);
+        gpu_init<6>(features, &table, matrix, w_, h_, d_);
         break;
       case 7:
-        gpu_init<7>(features, &table, matrix, w_, h_);
+        gpu_init<7>(features, &table, matrix, w_, h_, d_);
         break;    
       case 8:
-        gpu_init<8>(features, &table, matrix, w_, h_);
+        gpu_init<8>(features, &table, matrix, w_, h_, d_);
         break;
       case 9:
-        gpu_init<9>(features, &table, matrix, w_, h_);
+        gpu_init<9>(features, &table, matrix, w_, h_, d_);
         break;
       case 10:
-        gpu_init<10>(features, &table, matrix, w_, h_);
+        gpu_init<10>(features, &table, matrix, w_, h_, d_);
         break;  
       default:
         std::cout << "num_dimensions should be in [2, 10]";
@@ -516,39 +596,43 @@ void ModifiedPermutohedral::init_gpu(const float* features, int num_dimensions, 
     is_init = true;
 }
 
-void ModifiedPermutohedral::compute_gpu(float* out, const float* in, int value_size, bool reverse, bool add) const {
+void ModifiedPermutohedral3D::compute_gpu(float* out, 
+                                        const float* in, 
+                                        int value_size, 
+                                        bool reverse, 
+                                        bool add) const {
     // Losing time by dynamically allocating memory but more general function
     if(!is_init)
         std::cout << "Initialize lattice before doing any computing";
-    switch(d_){
+    switch(ndim_) {
       case 2:
-        gpu_compute<2, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<2, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;
       case 3:
-        gpu_compute<3, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<3, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;  
       case 4:
-        gpu_compute<4, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<4, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;
       case 5:
-        gpu_compute<5, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<5, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;
       case 6:
-        gpu_compute<6, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<6, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;
       case 7:
-        gpu_compute<7, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<7, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;  
       case 8:
-        gpu_compute<8, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<8, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;
       case 9:
-        gpu_compute<9, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<9, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;    
       case 10:
-        gpu_compute<10, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        gpu_compute<10, float>(out, in, table, matrix, w_, h_, d_, value_size, reverse, add);
         break;  
       default:
-        std::cout << "num_dimensions should be in [2, 10]"; 
+        std::cout << "num_dimensions should be in [2, 10]";            
     }
 }
