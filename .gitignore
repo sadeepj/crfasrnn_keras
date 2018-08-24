@@ -1,5 +1,4 @@
 *.pyc
-src/cpp/high_dim_filter.so
-*.h5
-*.png
 *.o
+*.so
+crfrnn_keras_model.h5

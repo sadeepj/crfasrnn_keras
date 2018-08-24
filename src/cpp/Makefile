@@ -12,8 +12,7 @@
 
 # Define the compiler
 CC := g++
-
-# Define the Python version
+# Define the target python version
 PYTHON := python3.6
 
 # high_dim_filter.so build dir
@@ -48,7 +47,6 @@ endif
 
 # Define build targets
 .PHONY: all clean
-
 
 all: high_dim_filter.so
 
