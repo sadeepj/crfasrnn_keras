@@ -12,6 +12,8 @@
 
 # Define the compiler
 CC := g++
+# Define the target python version
+PYTHON := python3.6
 
 # Define the Python version
 PYTHON := python3.6
@@ -25,7 +27,10 @@ USE_GPU := 1
 # Read Tensorflow paths
 TF_INC := $(shell $(PYTHON) -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
 TF_LIB := $(shell $(PYTHON) -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())')
+<<<<<<< HEAD
 TF_CFLAGS=$(shell $(PYTHON) -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_compile_flags()))') 
+=======
+>>>>>>> 5cea3f2f3b5cea4c69450230df9ad86505c2ec90
 
 # Is the Tensorflow version >= 1.4?
 TF_VERSION_GTE_1_4 := $(shell expr `$(PYTHON) -c 'import tensorflow as tf; print(tf.__version__)' | cut -f1,2 -d.` \>= 1.4)
@@ -49,6 +54,14 @@ endif
 # Define build targets
 .PHONY: all clean
 
+<<<<<<< HEAD
+=======
+high_dim_filter.so: high_dim_filter.cc modified_permutohedral.cc
+	$(CC) $(CFLAGS) -o build/high_dim_filter.so high_dim_filter.cc modified_permutohedral.cc $(LDFLAGS)
+
+clean:
+	$(RM) $(OUTDIR)/high_dim_filter.so
+>>>>>>> 5cea3f2f3b5cea4c69450230df9ad86505c2ec90
 
 all: high_dim_filter.so
 

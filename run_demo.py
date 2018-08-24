@@ -23,7 +23,7 @@ SOFTWARE.
 """
 
 import sys
-sys.path.insert(1, './src')
+sys.path.insert(1, './src/python')
 from crfrnn_model import get_crfrnn_model_def
 import util
 
