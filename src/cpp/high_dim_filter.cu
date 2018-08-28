@@ -114,14 +114,18 @@ void HighDimFilterFunctor<GPUDevice>::operator()(
                   tensorflow::Tensor * out,
                   const FilterParams & params) {
     const int spatial_dims = image_tensor.dims() - 1;
+    std::cout << "spatial dims: " << spatial_dims << "\n";
     const bool is_3d = spatial_dims == 3;
 
     const int image_channels = image_tensor.dim_size(0);
     const int bilateral_channels = image_channels + spatial_dims;
+    std::cout << "bilateral_channels: " << bilateral_channels << "\n";
     const int unary_channels = unary_tensor.dim_size(0);
+    std::cout << "unary_channels: " << unary_channels << "\n";
     const int depth = is_3d ? image_tensor.dim_size(1): 1;
     const int height = image_tensor.dim_size(spatial_dims - 1);
     const int width = image_tensor.dim_size(spatial_dims);
+    std::cout << "d w h: " << depth << ", " << height << ", " << width << "\n";
     const int num_pixels = width * height * depth;
 
     float * kernel_vals;
