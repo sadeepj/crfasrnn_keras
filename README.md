@@ -1,4 +1,6 @@
 # CRF-RNN for Semantic Image Segmentation - Keras/Tensorflow version
+## Forked from [sadeepj/crfasrnn_keras](https://github.com/sadeepj/crfasrnn_keras).
+#### Credit for all content below due to sadeepj/crfasrnn_keras contributors
 ![sample](sample.png)
 
 <b>Live demo:</b> &nbsp;&nbsp;&nbsp;&nbsp; [http://crfasrnn.torr.vision](http://crfasrnn.torr.vision) <br/>
