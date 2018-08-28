@@ -34,10 +34,6 @@ static void swapHashTableValues(float* oldValues, float *newValues, float* table
     CUDA_CHECK(cudaMemcpy(oldValues,table_values,size,cudaMemcpyDeviceToDevice));
     CUDA_CHECK(cudaMemcpy(table_values,newValues,size,cudaMemcpyDeviceToDevice));
     CUDA_CHECK(cudaMemcpy(newValues,oldValues,size,cudaMemcpyDeviceToDevice));
-    // Works but give poorer results
-    //oldValues = table_values;
-    //table_values = newValues;
-    //newValues = oldValues;
 }
 
 template<int pd>
@@ -49,11 +45,6 @@ __global__ static void createMatrix(const int w, const int h,
                                     const float *scaleFactor,
                                     MatrixEntry *matrix)
 {
-    // scanline order
-    //const int idx = blockIdx.x * BLOCK_SIZE + threadIdx.x;
-    //const bool outOfBounds = (idx>=num_points) ;
-    //const int threadId = idx;
-
     // 8x8 blocks
     const int x = threadIdx.x + blockIdx.x * blockDim.x;
     const int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -351,7 +342,6 @@ __global__ static void slice(const int w, const int h, const int vd,
     extern __shared__ float localValue[];
 
     float *myValue = localValue + threadId*vd;
-    float myWeight = 0;
 
     for (int i = 0; i < vd; i++) {
         myValue[i] = 0;
@@ -363,10 +353,8 @@ __global__ static void slice(const int w, const int h, const int vd,
         for (int j = 0; j < vd; j++) {
             myValue[j] += r.weight*val[j];
         }
-        myWeight += r.weight*val[vd];
     }
 
-    //myWeight = 1.0f/myWeight;
     float alpha = 1.0f / (1+powf(2, -pd));
     for (int j = 0; j < vd; j++){
         if(!add){
@@ -384,15 +372,12 @@ void gpu_init(const float* features,
               const int w, const int h)
 {
     int num_points = w*h ;
-    // Scan line order
-    //unsigned int blocks = (num_points-1)/64 + 1;
-    //unsigned int blockSize = 64;
     dim3 blocks((w-1)/8+1, (h-1)/8+1, 1);
     dim3 blockSize(8, 8, 1);
 
-    float blurVariance = 0.5 ;
+    float blurVariance = 0.5;
     float * scaleFactor;
-    float* scaleFactorHost = new float[pd];
+    float * scaleFactorHost = new float[pd];
 
     // Create Scale factor vector and give it to GPU
     // num_dimensions is likely to be low so do that
@@ -498,14 +483,35 @@ void ModifiedPermutohedral::init_gpu(const float* features, int num_dimensions, 
     d_ = num_dimensions ;
     N_ = w*h ;
     switch(num_dimensions){
-        case 2:
-            gpu_init<2>(features, &table, matrix, w_, h_);
-            break;
-        case 5:
-            gpu_init<5>(features, &table, matrix, w_, h_);
-            break;
-        default:
-            std::cout << "num_dimensions should be 2 or 5";
+      case 2:
+        gpu_init<2>(features, &table, matrix, w_, h_);
+        break;
+      case 3:
+        gpu_init<3>(features, &table, matrix, w_, h_);
+        break;
+      case 4:
+        gpu_init<4>(features, &table, matrix, w_, h_);
+        break; 
+      case 5:
+        gpu_init<5>(features, &table, matrix, w_, h_);
+        break;
+      case 6:
+        gpu_init<6>(features, &table, matrix, w_, h_);
+        break;
+      case 7:
+        gpu_init<7>(features, &table, matrix, w_, h_);
+        break;    
+      case 8:
+        gpu_init<8>(features, &table, matrix, w_, h_);
+        break;
+      case 9:
+        gpu_init<9>(features, &table, matrix, w_, h_);
+        break;
+      case 10:
+        gpu_init<10>(features, &table, matrix, w_, h_);
+        break;  
+      default:
+        std::cout << "num_dimensions should be in [2, 10]";
     }
     is_init = true;
 }
@@ -515,13 +521,34 @@ void ModifiedPermutohedral::compute_gpu(float* out, const float* in, int value_s
     if(!is_init)
         std::cout << "Initialize lattice before doing any computing";
     switch(d_){
-        case 2:
-            gpu_compute<2, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
-            break;
-        case 5:
-            gpu_compute<5, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
-            break;
-        default:
-            std::cout << "num_dimensions should be 2 or 5";
+      case 2:
+        gpu_compute<2, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;
+      case 3:
+        gpu_compute<3, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;  
+      case 4:
+        gpu_compute<4, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;
+      case 5:
+        gpu_compute<5, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;
+      case 6:
+        gpu_compute<6, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;
+      case 7:
+        gpu_compute<7, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;  
+      case 8:
+        gpu_compute<8, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;
+      case 9:
+        gpu_compute<9, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;    
+      case 10:
+        gpu_compute<10, float>(out, in, table, matrix, w_, h_, value_size, reverse, add);
+        break;  
+      default:
+        std::cout << "num_dimensions should be in [2, 10]"; 
     }
 }

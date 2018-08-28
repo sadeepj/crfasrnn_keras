@@ -80,7 +80,11 @@ protected:
 
 
 public:
+  #if __CUDACC__
+  ModifiedPermutohedral() : N_( 0 ), M_( 0 ), d_( 0 ), is_init( false ) {}
+  #else
   ModifiedPermutohedral() : N_( 0 ), M_( 0 ), d_( 0 ) {}
+  #endif
   ~ModifiedPermutohedral() {}
 
   #if __CUDACC__

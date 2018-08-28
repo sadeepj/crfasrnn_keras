@@ -25,7 +25,11 @@ SOFTWARE.
 import os
 import tensorflow as tf
 from tensorflow.python.framework import ops
-custom_module = tf.load_op_library(os.path.join(os.path.dirname(__file__), 'cpp', 'high_dim_filter.so'))
+custom_module = tf.load_op_library(os.path.join(os.path.dirname(__file__),
+                                                '..',
+                                                'cpp',
+                                                'build',
+                                                'high_dim_filter.so'))
 
 
 @ops.RegisterGradient('HighDimFilter')
@@ -46,8 +50,10 @@ def _high_dim_filter_grad(op, grad):
     grad_vals = custom_module.high_dim_filter(grad, rgb,
                                               bilateral=op.get_attr('bilateral'),
                                               theta_alpha=op.get_attr('theta_alpha'),
+                                              theta_alpha_z=op.get_attr('theta_alpha_z'),
                                               theta_beta=op.get_attr('theta_beta'),
                                               theta_gamma=op.get_attr('theta_gamma'),
+                                              theta_gamma_z=op.get_attr('theta_gamma_z'),
                                               backwards=True)
 
     return [grad_vals, tf.zeros_like(rgb)]

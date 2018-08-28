@@ -12,17 +12,22 @@
 
 # Define the compiler
 CC := g++
+# Define the target python version
+PYTHON := python3.6
+
+# high_dim_filter.so build dir
+BUILD_DIR := build
 
 #Use GPU Implementation?
 USE_GPU := 1
 
 # Read Tensorflow paths
-TF_INC := $(shell python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
-TF_LIB := $(shell python -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())')
-TF_CFLAGS=$(shell python -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_compile_flags()))') 
+TF_INC := $(shell $(PYTHON) -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
+TF_LIB := $(shell $(PYTHON) -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())')
+TF_CFLAGS=$(shell $(PYTHON) -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_compile_flags()))') 
 
 # Is the Tensorflow version >= 1.4?
-TF_VERSION_GTE_1_4 := $(shell expr `python -c 'import tensorflow as tf; print(tf.__version__)' | cut -f1,2 -d.` \>= 1.4)
+TF_VERSION_GTE_1_4 := $(shell expr `$(PYTHON) -c 'import tensorflow as tf; print(tf.__version__)' | cut -f1,2 -d.` \>= 1.4)
 
 # Flags required for all cases
 CFLAGS := -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0 -shared -fPIC -I$(TF_INC) -O2 
@@ -43,18 +48,20 @@ endif
 # Define build targets
 .PHONY: all clean
 
-
 all: high_dim_filter.so
 
-high_dim_filter.so: cudacode.o modified_permutohedral.o high_dim_filter.cc modified_permutohedral.cc 
-	g++ $(CFLAGS) -o high_dim_filter.so high_dim_filter.cc modified_permutohedral.cc cudacode.o modified_permutohedral.o $(LDFLAGS) -D FILTER_GPU=$(USE_GPU)
+high_dim_filter.so: cudacode.o modified_permutohedral.o modified_permutohedral_3d.o high_dim_filter.cc modified_permutohedral.cc 
+	g++ $(CFLAGS) -o $(BUILD_DIR)/high_dim_filter.so high_dim_filter.cc modified_permutohedral.cc $(BUILD_DIR)/cudacode.o $(BUILD_DIR)/modified_permutohedral.o $(BUILD_DIR)/modified_permutohedral_3d.o $(LDFLAGS) -D FILTER_GPU=$(USE_GPU) && \
+	$(RM) $(BUILD_DIR)/*.o
 
 cudacode.o: high_dim_filter.cu 
-	nvcc -std=c++11 -c -o cudacode.o high_dim_filter.cu $(TF_CFLAGS) -x cu -Xcompiler -fPIC --expt-relaxed-constexpr -D FILTER_GPU=$(USE_GPU)
+	nvcc -std=c++11 -c -o $(BUILD_DIR)/cudacode.o high_dim_filter.cu $(TF_CFLAGS) -x cu -Xcompiler -fPIC --expt-relaxed-constexpr -D FILTER_GPU=$(USE_GPU)
+	
+modified_permutohedral_3d.o: modified_permutohedral_3d.cu
+	nvcc -std=c++11 -c -o $(BUILD_DIR)/modified_permutohedral_3d.o modified_permutohedral_3d.cu $(TF_CFLAGS) -x cu -Xcompiler -fPIC --expt-relaxed-constexpr -D FILTER_GPU=$(USE_GPU)
 
 modified_permutohedral.o: modified_permutohedral.cu
-	nvcc -std=c++11 -c -o modified_permutohedral.o modified_permutohedral.cu $(TF_CFLAGS) -x cu -Xcompiler -fPIC --expt-relaxed-constexpr -D FILTER_GPU=$(USE_GPU)
+	nvcc -std=c++11 -c -o $(BUILD_DIR)/modified_permutohedral.o modified_permutohedral.cu $(TF_CFLAGS) -x cu -Xcompiler -fPIC --expt-relaxed-constexpr -D FILTER_GPU=$(USE_GPU)
 
 clean:
-	$(RM) high_dim_filter.so cudacode.o modified_permutohedral.o
-
+	$(RM) $(BUILD_DIR)/high_dim_filter.so $(BUILD_DIR)/cudacode.o $(BUILD_DIR)/modified_permutohedral.o $(BUILD_DIR)/modified_permutohedral_3d.o
