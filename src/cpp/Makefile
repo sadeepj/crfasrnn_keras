@@ -19,7 +19,12 @@ TF_INC := $(shell ${PYTHON} -c 'import tensorflow as tf; print(tf.sysconfig.get_
 TF_LIB := $(shell ${PYTHON} -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())')
 
 # Is the Tensorflow version >= 1.4?
-TF_VERSION_GTE_1_4 := $(shell expr `${PYTHON} -c 'import tensorflow as tf; print(tf.__version__)' | cut -f1,2 -d.` \>= 1.4)
+TF_VER_NUM := $(shell expr `${PYTHON} -c 'import tensorflow as tf; print(tf.__version__)'`)
+TF_VER_MAJOR := $(shell echo $(TF_VER_NUM) | cut -f1 -d.)
+TF_VER_MINOR := $(shell echo $(TF_VER_NUM) | cut -f2 -d.)
+
+TF_VERSION_GTE_1_4 := $(shell [ $(TF_VER_MAJOR) -gt 1 -o \( $(TF_VER_MAJOR) -eq 1 -a $(TF_VER_MINOR) -ge 4 \) ] && echo true)
+
 
 # Flags required for all cases
 CFLAGS := -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0 -shared -fPIC -I$(TF_INC) -O2 
@@ -30,11 +35,11 @@ ifeq ($(shell uname -s), Darwin)
 endif
 
 # Set some more flags if the Tensorflow version is >= 1.4
-ifeq ($(TF_VERSION_GTE_1_4), 1)
+ifeq ($(TF_VERSION_GTE_1_4), true)
     CFLAGS += -I$(TF_INC)/external/nsync/public
-	LDFLAGS := -L$(TF_LIB) -ltensorflow_framework
+    LDFLAGS := -L$(TF_LIB) -ltensorflow_framework
 else
-	LDFLAGS :=
+    LDFLAGS :=
 endif
 
 # Define build targets
