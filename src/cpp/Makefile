@@ -14,39 +14,22 @@
 PYTHON=python
 CC := g++
 
-# Read Tensorflow paths
-TF_INC := $(shell ${PYTHON} -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
-TF_LIB := $(shell ${PYTHON} -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())')
-
-# Is the Tensorflow version >= 1.4?
-TF_VER_NUM := $(shell expr `${PYTHON} -c 'import tensorflow as tf; print(tf.__version__)'`)
-TF_VER_MAJOR := $(shell echo $(TF_VER_NUM) | cut -f1 -d.)
-TF_VER_MINOR := $(shell echo $(TF_VER_NUM) | cut -f2 -d.)
-
-TF_VERSION_GTE_1_4 := $(shell [ $(TF_VER_MAJOR) -gt 1 -o \( $(TF_VER_MAJOR) -eq 1 -a $(TF_VER_MINOR) -ge 4 \) ] && echo true)
-
-
-# Flags required for all cases
-CFLAGS := -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0 -shared -fPIC -I$(TF_INC) -O2 
+# Read Tensorflow flags 
+TF_CFLAGS := $(shell ${PYTHON} -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_compile_flags()))')
+TF_LFLAGS := $(shell ${PYTHON} -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_link_flags()))')
 
 # Set a special flag if we are on macOS
 ifeq ($(shell uname -s), Darwin)
-	CFLAGS += -undefined dynamic_lookup
-endif
-
-# Set some more flags if the Tensorflow version is >= 1.4
-ifeq ($(TF_VERSION_GTE_1_4), true)
-    CFLAGS += -I$(TF_INC)/external/nsync/public
-    LDFLAGS := -L$(TF_LIB) -ltensorflow_framework
+	MACFLAGS := -undefined dynamic_lookup
 else
-    LDFLAGS :=
+	MACFLAGS :=
 endif
 
 # Define build targets
 .PHONY: all clean
 
 high_dim_filter.so: high_dim_filter.cc modified_permutohedral.cc
-	$(CC) $(CFLAGS) -o high_dim_filter.so high_dim_filter.cc modified_permutohedral.cc $(LDFLAGS)
+	$(CC) -std=c++11 -shared high_dim_filter.cc modified_permutohedral.cc -o high_dim_filter.so -fPIC $(TF_CFLAGS) $(MACFLAGS) $(TF_LFLAGS) -O2
 
 clean:
 	$(RM) high_dim_filter.so
