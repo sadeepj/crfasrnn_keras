@@ -65,22 +65,25 @@ def get_preprocessed_image(file_name):
     Note: This method assumes 'channels_last' data format in Keras.
     """
 
-    im = np.array(Image.open(file_name)).astype(np.float32)
+    image = Image.open(file_name)
+    original_size = image.size
+    w, h = original_size
+    ratio = min(500.0 / w, 500.0 / h)
+    image = image.resize((int(w * ratio), int(h * ratio)), resample=Image.BILINEAR)
+    im = np.array(image).astype(np.float32)
     assert im.ndim == 3, 'Only RGB images are supported.'
+    im = im[:, :, :3]
     im = im - _IMAGENET_MEANS
     im = im[:, :, ::-1]  # Convert to BGR
-    img_h, img_w, img_c = im.shape
-    assert img_c == 3, 'Only RGB images are supported.'
-    if img_h > 500 or img_w > 500:
-        raise ValueError('Please resize your images to be not bigger than 500 x 500.')
+    img_h, img_w, _ = im.shape
 
     pad_h = 500 - img_h
     pad_w = 500 - img_w
     im = np.pad(im, pad_width=((0, pad_h), (0, pad_w), (0, 0)), mode='constant', constant_values=0)
-    return np.expand_dims(im.astype(np.float32), 0), img_h, img_w
+    return np.expand_dims(im.astype(np.float32), 0), img_h, img_w, original_size
 
 
-def get_label_image(probs, img_h, img_w):
+def get_label_image(probs, img_h, img_w, original_size):
     """ Returns the label image (PNG with Pascal VOC colormap) given the probabilities.
 
     Note: This method assumes 'channels_last' data format.
@@ -89,4 +92,5 @@ def get_label_image(probs, img_h, img_w):
     labels = probs.argmax(axis=2).astype('uint8')[:img_h, :img_w]
     label_im = Image.fromarray(labels, 'P')
     label_im.putpalette(_PALETTE)
+    label_im = label_im.resize(original_size)
     return label_im
