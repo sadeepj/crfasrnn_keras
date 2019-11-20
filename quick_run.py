@@ -38,7 +38,7 @@ def main():
 
     saved_model_path = args.model
     input_file = args.image
-    output_file = args.output_path or input_file + '_labels.png'
+    output_file = args.output or input_file + '_labels.png'
 
     model = get_crfrnn_model_def()
     model.load_weights(saved_model_path)
