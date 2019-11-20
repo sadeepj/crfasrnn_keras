@@ -43,9 +43,9 @@ def main():
     model = get_crfrnn_model_def()
     model.load_weights(saved_model_path)
 
-    img_data, img_h, img_w = util.get_preprocessed_image(input_file)
-    probs = model.predict(img_data, verbose=False)[0, :, :, :]
-    segmentation = util.get_label_image(probs, img_h, img_w)
+    img_data, img_h, img_w, original_size = util.get_preprocessed_image(input_file)
+    probs = model.predict(img_data, verbose=False)[0]
+    segmentation = util.get_label_image(probs, img_h, img_w, original_size)
     segmentation.save(output_file)
 
 
