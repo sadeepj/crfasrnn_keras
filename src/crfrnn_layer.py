@@ -25,15 +25,17 @@ SOFTWARE.
 import numpy as np
 import tensorflow as tf
 from keras.engine.topology import Layer
+
 import high_dim_filter_loader
+
 custom_module = high_dim_filter_loader.custom_module
 
 
-def _diagonal_initializer(shape):
+def _diagonal_initializer(shape, *ignored, **ignored_too):
     return np.eye(shape[0], shape[1], dtype=np.float32)
 
 
-def _potts_model_initializer(shape):
+def _potts_model_initializer(shape, *ignored, **ignored_too):
     return -1 * _diagonal_initializer(shape)
 
 
